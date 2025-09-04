@@ -1,0 +1,68 @@
+1-Send OTP(Registration)
+curl --location 'http://localhost:8080/api/auth/signup/mobile' \
+--header 'Content-Type: application/json' \
+--header 'Cookie: JSESSIONID=1FBC54BB375E3B8874A4938473CAEB21' \
+--data '{
+    "mobile": "7777777772"
+}'
+
+
+2-Verify OTP(RegistrationVerifyOTP)
+curl --location 'http://localhost:8080/api/auth/signup/verify-otp' \
+--header 'Content-Type: application/json' \
+--header 'Cookie: cookies.txt; JSESSIONID=1FBC54BB375E3B8874A4938473CAEB21' \
+--data '{
+  "mobile": "7777777772",
+  "otpCode": "666666"
+}'
+
+
+3-Complete Registration
+curl --location 'http://localhost:8080/api/auth/signup/complete' \
+--header 'Content-Type: application/json' \
+--header 'Cookie: cookies.txt; JSESSIONID=1FBC54BB375E3B8874A4938473CAEB21' \
+--data-raw '{
+    "mobile": "7777777772",
+    "name": "Alam Khan",
+    "email": "alam2@example.com",
+    "password": "admin123",
+    "city": "Bangalore"
+  }'
+  
+  
+4-Login with mobile and password
+curl --location 'http://localhost:8080/api/auth/login' \
+--header 'Content-Type: application/json' \
+--header 'Cookie: JSESSIONID=1FBC54BB375E3B8874A4938473CAEB21' \
+--data '{
+    "mobile": "7777777772",
+    "password": "admin123"
+ }'
+ 
+ 
+5-Login Send OTP(OTP will send to Mobile Number)
+curl --location 'http://localhost:8080/api/auth/login/send-otp' \
+--header 'Content-Type: application/json' \
+--header 'Cookie: JSESSIONID=1FBC54BB375E3B8874A4938473CAEB21' \
+--data '{
+  "mobile": "7777777772"
+}'
+
+
+6-Login Verify OTP(OTP verify sent from mobile number)
+curl --location 'http://localhost:8080/api/auth/login/verify-otp' \
+--header 'Content-Type: application/json' \
+--header 'Cookie: JSESSIONID=1FBC54BB375E3B8874A4938473CAEB21' \
+--data '{
+    "mobile": "7777777772",
+    "otpCode": "666666"
+  }'
+  
+  
+Refresh Token Current
+curl --location 'http://localhost:8080/api/auth/refresh' \
+--header 'Content-Type: application/x-www-form-urlencoded' \
+--header 'Cookie: JSESSIONID=1FBC54BB375E3B8874A4938473CAEB21' \
+--data-urlencode 'refreshToken=eyJhbGciOiJIUzM4NCJ9.eyJzdWIiOiI3Nzc3Nzc3Nzc3IiwidXNlcklkIjoxLCJ0eXBlIjoicmVmcmVzaCIsImlhdCI6MTc1NjkyNjc3OSwiZXhwIjoxNzU3NTMxNTc5fQ.zBKOpRBSSff2IJPwmaYVAuIJrtokVLQzhA6LmfGdjXk3UNNFbs-MP1HUfwA5QiVG'
+
+
