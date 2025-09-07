@@ -261,4 +261,55 @@ public class UserService {
         User user = getUserById(userId);
         return addressRepository.findByUserAndIsDefault(user, true).orElse(null);
     }
+    
+    /**
+     * Get user details for profile section
+     */
+    public User getUserDetails(Long userId) {
+        User user = getUserById(userId);
+        // Create a copy without password for security
+        User userDetails = new User();
+        userDetails.setId(user.getId());
+        userDetails.setName(user.getName());
+        userDetails.setEmail(user.getEmail());
+        userDetails.setPhone(user.getPhone());
+        userDetails.setCity(user.getCity());
+        userDetails.setRole(user.getRole());
+        userDetails.setIsActive(user.getIsActive());
+        userDetails.setPhoneVerified(user.getPhoneVerified());
+        
+        logger.info("User details retrieved for user ID: {}", userId);
+        return userDetails;
+    }
+    
+    /**
+     * Update user details for profile section (excluding mobile number)
+     */
+    public User updateUserDetails(Long userId, String name, String email, String city) {
+        User user = getUserById(userId);
+        
+        // Validate email availability if it's being changed
+        if (!user.getEmail().equals(email)) {
+            userRepository.findByEmail(email)
+                .ifPresent(existingUser -> {
+                    if (!existingUser.getId().equals(userId)) {
+                        throw new RuntimeException("Email is already in use by another user");
+                    }
+                });
+        }
+        
+        // Update allowed fields
+        user.setName(name);
+        user.setEmail(email);
+        if (city != null && !city.trim().isEmpty()) {
+            user.setCity(city.trim());
+        }
+        
+        User updatedUser = userRepository.save(user);
+        logger.info("User details updated for user ID: {}, name: {}, email: {}, city: {}", 
+                   userId, name, email, city);
+        
+        // Return user details without password
+        return getUserDetails(userId);
+    }
 }

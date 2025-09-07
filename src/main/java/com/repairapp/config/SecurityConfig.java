@@ -114,7 +114,7 @@ public class SecurityConfig {
         http.cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .csrf(AbstractHttpConfigurer::disable)
             .exceptionHandling(exception -> exception.authenticationEntryPoint(unauthorizedHandler()))
-            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
             .authorizeHttpRequests(authz -> authz
                 // Public endpoints
                 .requestMatchers("/auth/**").permitAll()
@@ -124,6 +124,9 @@ public class SecurityConfig {
                 .requestMatchers("/test/**").permitAll()
                 .requestMatchers("/swagger-ui/**", "/api-docs/**", "/swagger-ui.html").permitAll()
                 .requestMatchers("/actuator/**").permitAll()
+                
+                // Service cart endpoints (allow guest + authenticated users)
+                .requestMatchers("/service-cart/**").permitAll()
                 
                 // Admin endpoints
                 .requestMatchers("/admin/**").hasRole("ADMIN")

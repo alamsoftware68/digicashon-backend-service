@@ -11,10 +11,10 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * Repository interface for ServiceCategory entities
+ * Repository interface for RepairService ServiceCategory entities
  */
 @Repository
-public interface ServiceCategoryRepository extends JpaRepository<ServiceCategory, Long> {
+public interface RepairServiceCategoryRepository extends JpaRepository<ServiceCategory, Long> {
 
     /**
      * Find all active categories
@@ -34,7 +34,7 @@ public interface ServiceCategoryRepository extends JpaRepository<ServiceCategory
     /**
      * Find categories with services
      */
-    @Query("SELECT DISTINCT c FROM ServiceCategory c LEFT JOIN FETCH c.services s WHERE c.isActive = true AND (s.isActive = true OR s IS NULL) ORDER BY c.displayOrder ASC")
+    @Query("SELECT DISTINCT c FROM RepairServiceCategory c LEFT JOIN FETCH c.services s WHERE c.isActive = true AND (s.isActive = true OR s IS NULL) ORDER BY c.displayOrder ASC")
     List<ServiceCategory> findActiveCategoriesWithServices();
 
     /**

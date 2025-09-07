@@ -10,8 +10,8 @@ import java.util.List;
 /**
  * Service Category entity for organizing repair services
  */
-@Entity
-@Table(name = "service_categories")
+@Entity(name = "RepairServiceCategory")
+@Table(name = "repair_service_categories")
 public class ServiceCategory extends BaseEntity {
 
     @NotBlank(message = "Category name is required")

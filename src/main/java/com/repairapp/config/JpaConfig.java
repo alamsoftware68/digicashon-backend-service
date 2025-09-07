@@ -12,7 +12,7 @@ import org.springframework.transaction.annotation.EnableTransactionManagement;
  */
 @Configuration
 @EnableJpaRepositories(
-    basePackages = "com.repairapp.repository",
+    basePackages = {"com.repairapp.repository", "com.digicashon.digicashonbackendservice.repository"},
     enableDefaultTransactions = true
 )
 @EnableJpaAuditing(auditorAwareRef = "auditingHandler")

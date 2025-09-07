@@ -2,6 +2,7 @@ package com.repairapp;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.autoconfigure.domain.EntityScan;
 import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
@@ -11,7 +12,8 @@ import org.springframework.scheduling.annotation.EnableScheduling;
  * @author RepairApp Team
  * @version 1.0.0
  */
-@SpringBootApplication
+@SpringBootApplication(scanBasePackages = {"com.repairapp", "com.digicashon.digicashonbackendservice"})
+@EntityScan(basePackages = {"com.repairapp.entity", "com.digicashon.digicashonbackendservice.entity"})
 @EnableAsync
 @EnableScheduling
 public class RepairServiceApplication {

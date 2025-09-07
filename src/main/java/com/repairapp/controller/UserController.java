@@ -1,6 +1,8 @@
 package com.repairapp.controller;
 
 import com.repairapp.dto.response.ApiResponse;
+import com.repairapp.dto.user.UserDetailsDto;
+import com.repairapp.dto.user.UpdateUserDetailsRequest;
 import com.repairapp.entity.Address;
 import com.repairapp.entity.OTPVerification;
 import com.repairapp.entity.PaymentMethod;
@@ -48,6 +50,127 @@ public class UserController {
         User currentUser = authService.getCurrentUser();
         currentUser.setPassword(null); // Remove password from response
         return ResponseEntity.ok(ApiResponse.success("Profile retrieved successfully", currentUser));
+    }
+    
+    /**
+     * Get user details for profile section (logged-in user)
+     */
+    @Operation(summary = "Get current user details", description = "Get current logged-in user's detailed information for profile section")
+    @GetMapping("/profile/details")
+    public ResponseEntity<ApiResponse<UserDetailsDto>> getUserDetails() {
+        User currentUser = authService.getCurrentUser();
+        User userDetails = userService.getUserDetails(currentUser.getId());
+        
+        // Convert to DTO
+        UserDetailsDto userDetailsDto = new UserDetailsDto(
+            userDetails.getId(),
+            userDetails.getName(),
+            userDetails.getEmail(),
+            userDetails.getCity(),
+            userDetails.getPhone(),
+            userDetails.getRole().name(),
+            userDetails.getIsActive(),
+            userDetails.getPhoneVerified()
+        );
+        
+        return ResponseEntity.ok(ApiResponse.success("User details retrieved successfully", userDetailsDto));
+    }
+    
+    /**
+     * Get user details by mobile number (path parameter)
+     */
+    @Operation(summary = "Get user details by mobile", description = "Get user's detailed information by mobile number")
+    @GetMapping("/details/mobile/{mobile}")
+    public ResponseEntity<ApiResponse<UserDetailsDto>> getUserDetailsByMobile(@PathVariable String mobile) {
+        
+        // Get user by mobile number
+        User user = authService.getUserByMobile(mobile);
+        
+        if (user == null) {
+            return ResponseEntity.badRequest()
+                .body(ApiResponse.error("User not found with mobile number: " + mobile));
+        }
+        
+        User userDetails = userService.getUserDetails(user.getId());
+        
+        // Convert to DTO
+        UserDetailsDto userDetailsDto = new UserDetailsDto(
+            userDetails.getId(),
+            userDetails.getName(),
+            userDetails.getEmail(),
+            userDetails.getCity(),
+            userDetails.getPhone(),
+            userDetails.getRole().name(),
+            userDetails.getIsActive(),
+            userDetails.getPhoneVerified()
+        );
+        
+        return ResponseEntity.ok(ApiResponse.success("User details retrieved successfully", userDetailsDto));
+    }
+    
+    /**
+     * Get user details by mobile number (query parameter)
+     */
+    @Operation(summary = "Get user details by mobile (query)", description = "Get user's detailed information by mobile number as query parameter")
+    @GetMapping("/details")
+    public ResponseEntity<ApiResponse<UserDetailsDto>> getUserDetailsByMobileQuery(@RequestParam String mobile) {
+        
+        // Get user by mobile number
+        User user = authService.getUserByMobile(mobile);
+        
+        if (user == null) {
+            return ResponseEntity.badRequest()
+                .body(ApiResponse.error("User not found with mobile number: " + mobile));
+        }
+        
+        User userDetails = userService.getUserDetails(user.getId());
+        
+        // Convert to DTO
+        UserDetailsDto userDetailsDto = new UserDetailsDto(
+            userDetails.getId(),
+            userDetails.getName(),
+            userDetails.getEmail(),
+            userDetails.getCity(),
+            userDetails.getPhone(),
+            userDetails.getRole().name(),
+            userDetails.getIsActive(),
+            userDetails.getPhoneVerified()
+        );
+        
+        return ResponseEntity.ok(ApiResponse.success("User details retrieved successfully", userDetailsDto));
+    }
+    
+    /**
+     * Update user details for profile section (excludes mobile number)
+     */
+    @Operation(summary = "Update user details", description = "Update current user's detailed information (mobile number cannot be changed)")
+    @PutMapping("/profile/details")
+    public ResponseEntity<ApiResponse<UserDetailsDto>> updateUserDetails(
+            @Valid @RequestBody UpdateUserDetailsRequest request) {
+        
+        User currentUser = authService.getCurrentUser();
+        
+        // Update user details (mobile number is not allowed)
+        User updatedUser = userService.updateUserDetails(
+            currentUser.getId(),
+            request.getName(),
+            request.getEmail(),
+            request.getCity()
+        );
+        
+        // Convert to DTO
+        UserDetailsDto userDetailsDto = new UserDetailsDto(
+            updatedUser.getId(),
+            updatedUser.getName(),
+            updatedUser.getEmail(),
+            updatedUser.getCity(),
+            updatedUser.getPhone(),
+            updatedUser.getRole().name(),
+            updatedUser.getIsActive(),
+            updatedUser.getPhoneVerified()
+        );
+        
+        return ResponseEntity.ok(ApiResponse.success("User details updated successfully", userDetailsDto));
     }
 
     /**
