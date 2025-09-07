@@ -1,6 +1,7 @@
 package com.repairapp.entity;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
 
@@ -63,20 +64,25 @@ public class RepairOrder extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "service_id")
+    @JsonIgnoreProperties({"orders", "orderItems", "category", "features"}) // Prevent circular references
     private RepairService service; // Main service for backward compatibility
 
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @JsonIgnore // Ignore order items to prevent lazy loading issues for now
     private List<OrderItem> orderItems = new ArrayList<>();
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "technician_id")
+    @JsonIgnoreProperties({"orders", "addresses", "paymentMethods", "password", "email", "phone"}) // Include only basic info
     private User technician;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "address_id")
+    @JsonIgnoreProperties({"user"}) // Prevent circular reference
     private Address address;
 
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @JsonIgnore // Ignore invoices to prevent lazy loading issues
     private List<Invoice> invoices = new ArrayList<>();
 
     // Constructors

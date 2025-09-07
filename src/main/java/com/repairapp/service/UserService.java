@@ -10,6 +10,7 @@ import com.repairapp.repository.UserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,6 +33,9 @@ public class UserService {
 
     @Autowired
     private PaymentMethodRepository paymentMethodRepository;
+    
+    @Autowired
+    private PasswordEncoder passwordEncoder;
 
     /**
      * Get user by ID
@@ -311,5 +315,28 @@ public class UserService {
         
         // Return user details without password
         return getUserDetails(userId);
+    }
+    
+    /**
+     * Change user password
+     */
+    public void changePassword(Long userId, String currentPassword, String newPassword) {
+        User user = getUserById(userId);
+        
+        // Verify current password
+        if (!passwordEncoder.matches(currentPassword, user.getPassword())) {
+            throw new RuntimeException("Current password is incorrect");
+        }
+        
+        // Ensure new password is different from current password
+        if (passwordEncoder.matches(newPassword, user.getPassword())) {
+            throw new RuntimeException("New password must be different from current password");
+        }
+        
+        // Encode and save new password
+        user.setPassword(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
+        
+        logger.info("Password changed successfully for user ID: {}", userId);
     }
 }

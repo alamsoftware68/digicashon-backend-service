@@ -3,6 +3,7 @@ package com.repairapp.controller;
 import com.repairapp.dto.response.ApiResponse;
 import com.repairapp.dto.user.UserDetailsDto;
 import com.repairapp.dto.user.UpdateUserDetailsRequest;
+import com.repairapp.dto.user.ChangePasswordRequest;
 import com.repairapp.entity.Address;
 import com.repairapp.entity.OTPVerification;
 import com.repairapp.entity.PaymentMethod;
@@ -338,6 +339,23 @@ public class UserController {
         }
         
         return ResponseEntity.ok(ApiResponse.success("Default address retrieved successfully", defaultAddress));
+    }
+
+    /**
+     * Change user password
+     */
+    @Operation(summary = "Change password", description = "Change current user's password")
+    @PostMapping("/profile/change-password")
+    public ResponseEntity<ApiResponse<String>> changePassword(@Valid @RequestBody ChangePasswordRequest request) {
+        try {
+            User currentUser = authService.getCurrentUser();
+            userService.changePassword(currentUser.getId(), request.getCurrentPassword(), request.getNewPassword());
+            return ResponseEntity.ok(ApiResponse.success("Password changed successfully"));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body(ApiResponse.error("Failed to change password. Please try again."));
+        }
     }
 
     /**

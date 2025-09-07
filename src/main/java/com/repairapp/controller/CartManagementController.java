@@ -25,7 +25,7 @@ import java.util.stream.Collectors;
 
 @Tag(name = "Cart Management", description = "Cart and Order Management APIs for Laptop Repair Services")
 @RestController
-@RequestMapping("/api/cart")
+@RequestMapping("/cart")
 @CrossOrigin(origins = "*", maxAge = 3600)
 @Slf4j
 public class CartManagementController {

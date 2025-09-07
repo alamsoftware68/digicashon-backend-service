@@ -62,8 +62,24 @@ public class ServiceCartServiceImpl implements ServiceCartService {
     @Override
     public ServiceCart getActiveCart(String sessionId, User user) {
         if (user != null) {
-            // For authenticated users, prioritize user cart
-            return serviceCartRepository.findByUserIdAndIsActiveTrue(user.getId()).orElse(null);
+            // For authenticated users, first try to find by user ID
+            Optional<ServiceCart> userCart = serviceCartRepository.findByUserIdAndIsActiveTrue(user.getId());
+            if (userCart.isPresent()) {
+                return userCart.get();
+            }
+            
+            // If no user cart exists, check for session cart and merge it
+            if (sessionId != null) {
+                Optional<ServiceCart> sessionCart = serviceCartRepository.findBySessionIdAndIsActiveTrue(sessionId);
+                if (sessionCart.isPresent()) {
+                    // Transfer session cart to user
+                    ServiceCart cart = sessionCart.get();
+                    cart.setUser(user);
+                    cart.setSessionId(null); // Clear session ID since it's now a user cart
+                    return serviceCartRepository.save(cart);
+                }
+            }
+            return null;
         } else if (sessionId != null) {
             // For guest users, use session cart
             return serviceCartRepository.findBySessionIdAndIsActiveTrue(sessionId).orElse(null);
@@ -618,11 +634,16 @@ public class ServiceCartServiceImpl implements ServiceCartService {
             throw new RuntimeException("User must be authenticated to place order");
         }
 
-        log.info("Placing order from cart for user: {}, addressId: {}", user.getId(), addressId);
+        log.info("Placing order from cart for user: {}, sessionId: {}, addressId: {}", user.getId(), sessionId, addressId);
 
         // Get active cart
         ServiceCart cart = getActiveCart(sessionId, user);
+        log.info("Retrieved cart: {}, isEmpty: {}, cartId: {}", cart != null ? "Found" : "Not Found", 
+                cart != null ? cart.isEmpty() : "N/A", cart != null ? cart.getId() : "N/A");
+        
         if (cart == null || cart.isEmpty()) {
+            // Debug information
+            log.error("Cart validation failed - cart: {}, isEmpty: {}", cart, cart != null ? cart.isEmpty() : "N/A");
             throw new RuntimeException("Cart is empty or not found");
         }
 

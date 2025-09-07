@@ -24,7 +24,7 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/cart")
+@RequestMapping("/service-cart")
 @RequiredArgsConstructor
 @Slf4j
 @Tag(name = "Cart Management", description = "APIs for managing shopping cart")

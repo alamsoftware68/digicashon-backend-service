@@ -22,6 +22,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -30,7 +31,7 @@ import java.util.Map;
  */
 @Tag(name = "Service Cart Management", description = "Service Cart and Cart Item management APIs")
 @RestController
-@RequestMapping("/service-cart")
+@RequestMapping("/service-carts")
 @CrossOrigin(origins = "*", maxAge = 3600)
 @RequiredArgsConstructor
 @Slf4j
@@ -349,6 +350,43 @@ public class ServiceCartController {
         return ResponseEntity.ok(ApiResponse.success("Session cart transferred successfully", cartDto));
     }
 
+    // ============== DEBUG ENDPOINTS ==============
+    
+    /**
+     * Debug cart information
+     */
+    @Operation(summary = "Debug cart info", description = "Get detailed cart information for debugging")
+    @GetMapping("/debug")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> debugCartInfo(
+            @AuthenticationPrincipal UserPrincipal userPrincipal,
+            HttpServletRequest request) {
+        
+        String sessionId = getSessionId(request);
+        User user = getUserFromPrincipal(userPrincipal);
+        
+        Map<String, Object> debugInfo = new HashMap<>();
+        debugInfo.put("sessionId", sessionId);
+        debugInfo.put("user", user != null ? Map.of(
+                "id", user.getId(),
+                "name", user.getName(),
+                "email", user.getEmail()
+        ) : null);
+        
+        // Get cart information
+        ServiceCartDto cartDto = serviceCartService.getCartDto(sessionId, user);
+        debugInfo.put("cart", cartDto);
+        
+        // Get cart items
+        List<ServiceCartItemDto> items = serviceCartService.getCartItemsDto(sessionId, user);
+        debugInfo.put("items", items);
+        
+        // Get cart summary
+        Map<String, Object> summary = serviceCartService.getCartSummary(sessionId, user);
+        debugInfo.put("summary", summary);
+        
+        return ResponseEntity.ok(ApiResponse.success("Debug information retrieved", debugInfo));
+    }
+    
     // ============== BULK OPERATIONS ==============
 
     /**

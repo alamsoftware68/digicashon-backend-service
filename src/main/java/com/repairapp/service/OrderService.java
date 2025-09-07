@@ -45,6 +45,9 @@ public class OrderService {
 
     @Autowired
     private AddressRepository addressRepository;
+    
+    @Autowired
+    private com.digicashon.digicashonbackendservice.repository.ServiceItemRepository serviceItemRepository;
 
     /**
      * Create new repair order with multiple services (Frontend compatible)
@@ -81,8 +84,7 @@ public class OrderService {
         // Create order items for each service
         BigDecimal calculatedTotal = BigDecimal.ZERO;
         for (OrderServiceRequest serviceRequest : request.getServices()) {
-            RepairService service = serviceRepository.findById(serviceRequest.getServiceId())
-                    .orElseThrow(() -> new ResourceNotFoundException("RepairService", "id", serviceRequest.getServiceId()));
+            RepairService service = findOrCreateRepairService(serviceRequest.getServiceId());
             
             OrderItem orderItem = new OrderItem();
             orderItem.setOrder(savedOrder);
@@ -98,8 +100,7 @@ public class OrderService {
         
         // Set the first service as the main service for compatibility
         if (!request.getServices().isEmpty()) {
-            RepairService firstService = serviceRepository.findById(request.getServices().get(0).getServiceId())
-                    .orElse(null);
+            RepairService firstService = findOrCreateRepairService(request.getServices().get(0).getServiceId());
             savedOrder.setService(firstService);
         }
         
@@ -154,19 +155,18 @@ public class OrderService {
     /**
      * Get user orders
      */
+    @Transactional(readOnly = true)
     public List<RepairOrder> getUserOrders(Long userId) {
-        User user = new User();
-        user.setId(userId);
-        return orderRepository.findByUserOrderByCreatedAtDesc(user);
+        // Use a proper repository method that queries by user ID directly
+        return orderRepository.findByUserIdOrderByCreatedAtDesc(userId);
     }
 
     /**
      * Get user orders with pagination
      */
     public Page<RepairOrder> getUserOrdersWithPagination(Long userId, Pageable pageable) {
-        User user = new User();
-        user.setId(userId);
-        return orderRepository.findByUserOrderByCreatedAtDesc(user, pageable);
+        // Use a proper repository method that queries by user ID directly
+        return orderRepository.findByUserIdOrderByCreatedAtDesc(userId, pageable);
     }
 
     /**
@@ -213,8 +213,9 @@ public class OrderService {
     public RepairOrder assignTechnician(Long orderId, Long technicianId) {
         RepairOrder order = getOrderById(orderId);
         
-        User technician = new User();
-        technician.setId(technicianId);
+        // Get the actual User entity from database to avoid detached entity issues
+        User technician = orderRepository.findUserById(technicianId)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "id", technicianId));
         
         order.setTechnician(technician);
         order.setStatus(RepairOrder.OrderStatus.CONFIRMED);
@@ -241,8 +242,11 @@ public class OrderService {
     /**
      * Cancel order
      */
+    @Transactional
     public RepairOrder cancelOrder(Long orderId, String reason) {
-        RepairOrder order = getOrderById(orderId);
+        // Use eager fetching to prevent lazy loading issues during serialization
+        RepairOrder order = orderRepository.findByIdWithAssociations(orderId)
+                .orElseThrow(() -> new ResourceNotFoundException("RepairOrder", "id", orderId));
         
         if (order.getStatus() == RepairOrder.OrderStatus.COMPLETED) {
             throw new BadRequestException("Cannot cancel a completed order");
@@ -264,8 +268,11 @@ public class OrderService {
     /**
      * Cancel order by order number (Frontend compatible)
      */
+    @Transactional
     public RepairOrder cancelOrderByNumber(String orderNumber, String reason) {
-        RepairOrder order = getOrderByOrderNumber(orderNumber);
+        // Use eager fetching to prevent lazy loading issues during serialization
+        RepairOrder order = orderRepository.findByOrderNumberWithAssociations(orderNumber)
+                .orElseThrow(() -> new ResourceNotFoundException("RepairOrder", "orderNumber", orderNumber));
         
         // Verify order belongs to current user
         User currentUser = authService.getCurrentUser();
@@ -338,5 +345,54 @@ public class OrderService {
 
         invoiceRepository.save(invoice);
         logger.info("Invoice created: {} for order: {}", invoiceNumber, order.getOrderNumber());
+    }
+    
+    /**
+     * Find existing RepairService or create one from ServiceItem
+     * This bridges the gap between the new ServiceItem system and legacy RepairService system
+     */
+    private RepairService findOrCreateRepairService(Long serviceItemId) {
+        // First, try to find an existing RepairService with this ID (in case it's actually a RepairService ID)
+        RepairService existingService = serviceRepository.findById(serviceItemId).orElse(null);
+        if (existingService != null) {
+            logger.debug("Found existing RepairService with ID: {}", serviceItemId);
+            return existingService;
+        }
+        
+        // If not found, this is likely a ServiceItem ID, so get the ServiceItem and create a RepairService
+        com.digicashon.digicashonbackendservice.entity.ServiceItem serviceItem = 
+            serviceItemRepository.findById(serviceItemId)
+                .orElseThrow(() -> new ResourceNotFoundException("ServiceItem", "id", serviceItemId));
+        
+        logger.info("Creating RepairService from ServiceItem ID: {} - {}", serviceItemId, serviceItem.getServiceTitle());
+        
+        // Create a new RepairService based on the ServiceItem
+        RepairService repairService = new RepairService();
+        repairService.setName(serviceItem.getServiceTitle());
+        repairService.setDescription(serviceItem.getServiceDescription());
+        repairService.setBasePrice(BigDecimal.valueOf(serviceItem.getPrice()));
+        repairService.setEstimatedDurationHours(2); // Default duration
+        repairService.setIsActive(serviceItem.getIsActive());
+        repairService.setIsFeatured(false); // Default
+        
+        // Map device type based on service category or default to LAPTOP
+        RepairService.DeviceType deviceType = RepairService.DeviceType.LAPTOP; // Default
+        if (serviceItem.getServiceCategory() != null) {
+            String categoryName = serviceItem.getServiceCategory().getCategoryName().toLowerCase();
+            if (categoryName.contains("mobile") || categoryName.contains("phone")) {
+                deviceType = RepairService.DeviceType.MOBILE;
+            } else if (categoryName.contains("tablet")) {
+                deviceType = RepairService.DeviceType.TABLET;
+            } else if (categoryName.contains("watch")) {
+                deviceType = RepairService.DeviceType.WATCH;
+            }
+        }
+        repairService.setDeviceType(deviceType);
+        
+        // Save and return the new RepairService
+        RepairService savedService = serviceRepository.save(repairService);
+        logger.info("Created RepairService with ID: {} for ServiceItem: {}", savedService.getId(), serviceItemId);
+        
+        return savedService;
     }
 }
