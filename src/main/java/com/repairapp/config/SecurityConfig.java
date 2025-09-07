@@ -128,6 +128,9 @@ public class SecurityConfig {
                 // Service cart endpoints (allow guest + authenticated users)
                 .requestMatchers("/service-cart/**").permitAll()
                 
+                // Profile endpoints - REQUIRE AUTHENTICATION
+                .requestMatchers("/profile/**").authenticated()
+                
                 // Admin endpoints
                 .requestMatchers("/admin/**").hasRole("ADMIN")
                 .requestMatchers("/technician/**").hasAnyRole("TECHNICIAN", "ADMIN")
