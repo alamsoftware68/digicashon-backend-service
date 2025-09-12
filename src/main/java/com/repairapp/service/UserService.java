@@ -323,14 +323,27 @@ public class UserService {
     public void changePassword(Long userId, String currentPassword, String newPassword) {
         User user = getUserById(userId);
         
+        // Validate input parameters
+        if (currentPassword == null || currentPassword.trim().isEmpty()) {
+            throw new IllegalArgumentException("Current password is required");
+        }
+        
+        if (newPassword == null || newPassword.trim().isEmpty()) {
+            throw new IllegalArgumentException("New password is required");
+        }
+        
+        if (newPassword.length() < 8) {
+            throw new IllegalArgumentException("New password must be at least 8 characters long");
+        }
+        
         // Verify current password
         if (!passwordEncoder.matches(currentPassword, user.getPassword())) {
-            throw new RuntimeException("Current password is incorrect");
+            throw new IllegalArgumentException("Current password is incorrect");
         }
         
         // Ensure new password is different from current password
         if (passwordEncoder.matches(newPassword, user.getPassword())) {
-            throw new RuntimeException("New password must be different from current password");
+            throw new IllegalArgumentException("New password must be different from current password");
         }
         
         // Encode and save new password
