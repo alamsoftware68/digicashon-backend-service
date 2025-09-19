@@ -10,7 +10,7 @@ import jakarta.validation.constraints.Size;
 public class AddAddressRequest {
 
     @NotBlank(message = "Address type is required")
-    @Pattern(regexp = "^(Home|Office|Others)$", message = "Address type must be Home, Office, or Others")
+    @Pattern(regexp = "^(Home|Work|Other)$", message = "Address type must be Home, Work, or Other")
     private String type;
 
     @NotBlank(message = "Street address is required")

@@ -12,7 +12,7 @@ import java.time.LocalDateTime;
 public class AddressDto {
 
     private Long id;
-    private String type; // Home, Office, Others
+    private String type; // Home, Work, Other
     private String address; // Street Address
     private String city;
     private String state;
