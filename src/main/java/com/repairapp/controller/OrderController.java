@@ -115,12 +115,14 @@ public class OrderController {
 
     /**
      * Get current user's orders
+     * *** ENHANCED: Now returns orders with actual cart item details ***
      */
     @Operation(summary = "Get user orders", description = "Get all orders for the current user")
     @GetMapping("/my-orders")
     public ResponseEntity<ApiResponse<List<RepairOrder>>> getMyOrders() {
         User currentUser = authService.getCurrentUser();
-        List<RepairOrder> orders = orderService.getUserOrders(currentUser.getId());
+        // *** ENHANCED: Use getUserOrdersWithItems to get enhanced order details ***
+        List<RepairOrder> orders = orderService.getUserOrdersWithItems(currentUser.getId());
         return ResponseEntity.ok(ApiResponse.success("Orders retrieved successfully", orders));
     }
 
@@ -169,6 +171,31 @@ public class OrderController {
         }
         
         return ResponseEntity.ok(ApiResponse.success("Order retrieved successfully", order));
+    }
+    
+    /**
+     * *** NEW: Get complete order details by order number ***
+     * This endpoint returns the same detailed structure as order creation response
+     * Including orderItems, service details, address, and all related information
+     */
+    @Operation(summary = "Get detailed order by number", description = "Get complete order details including orderItems by order number")
+    @GetMapping("/details/{orderNumber}")
+    public ResponseEntity<ApiResponse<RepairOrder>> getOrderDetailsByNumber(@PathVariable String orderNumber) {
+        try {
+            RepairOrder order = orderService.getOrderDetailsByOrderNumber(orderNumber);
+            
+            // Check if user has access to this order
+            User currentUser = authService.getCurrentUser();
+            if (currentUser.getRole() == User.Role.CUSTOMER && 
+                !order.getUser().getId().equals(currentUser.getId())) {
+                return ResponseEntity.status(403).body(ApiResponse.error("Access denied to this order"));
+            }
+            
+            return ResponseEntity.ok(ApiResponse.success("Order details retrieved successfully", order));
+            
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body(ApiResponse.error("Failed to retrieve order details: " + e.getMessage()));
+        }
     }
 
     /**

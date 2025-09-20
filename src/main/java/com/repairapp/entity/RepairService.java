@@ -1,5 +1,7 @@
 package com.repairapp.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
 
@@ -12,6 +14,7 @@ import java.util.List;
  */
 @Entity
 @Table(name = "repair_services")
+@JsonIgnoreProperties({"features", "orders", "orderItems", "category"}) // Prevent lazy loading issues
 public class RepairService extends BaseEntity {
 
     @NotBlank(message = "Service name is required")
@@ -53,17 +56,21 @@ public class RepairService extends BaseEntity {
     @ElementCollection
     @CollectionTable(name = "service_features", joinColumns = @JoinColumn(name = "service_id"))
     @Column(name = "feature")
+    @JsonIgnore // Prevent lazy loading issues in JSON serialization
     private List<String> features = new ArrayList<>();
 
     // Relationships
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "category_id")
+    @JsonIgnore // Prevent lazy loading issues
     private ServiceCategory category;
 
     @OneToMany(mappedBy = "service", fetch = FetchType.LAZY)
+    @JsonIgnore // Prevent lazy loading issues
     private List<RepairOrder> orders = new ArrayList<>();
 
     @OneToMany(mappedBy = "service", fetch = FetchType.LAZY)
+    @JsonIgnore // Prevent lazy loading issues
     private List<OrderItem> orderItems = new ArrayList<>();
 
     // Constructors

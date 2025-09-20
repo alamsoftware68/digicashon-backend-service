@@ -17,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -50,9 +51,222 @@ public class OrderService {
     private com.digicashon.digicashonbackendservice.repository.ServiceItemRepository serviceItemRepository;
 
     /**
-     * Create new repair order with multiple services (Frontend compatible)
+     * *** ENHANCED: Create order with cart item details preserved ***
+     */
+    public RepairOrder createOrderWithMultipleServicesFromCart(CreateOrderRequest request, 
+            List<CartItemDetails> cartItemDetails) {
+        User currentUser = authService.getCurrentUser();
+        
+        // Validate address
+        Address address = addressRepository.findById(request.getAddressId())
+                .orElseThrow(() -> new ResourceNotFoundException("Address", "id", request.getAddressId()));
+        
+        // Verify address belongs to current user
+        if (!address.getUser().getId().equals(currentUser.getId())) {
+            throw new BadRequestException("Address does not belong to current user");
+        }
+        
+        // Generate unique order number
+        String orderNumber = OrderNumberGenerator.generateOrderNumber();
+        
+        // Create order
+        RepairOrder order = new RepairOrder();
+        order.setOrderNumber(orderNumber);
+        order.setUser(currentUser);
+        order.setTotalPrice(request.getTotalAmount());
+        order.setProblemDescription(request.getProblemDescription());
+        order.setPickupAddress(address.getFullAddress());
+        order.setCustomerNotes(request.getCustomerNotes());
+        order.setStatus(RepairOrder.OrderStatus.PENDING);
+        order.setAddress(address);
+        
+        // Save order first to get ID
+        RepairOrder savedOrder = orderRepository.save(order);
+        
+        // Create order items with ACTUAL CART ITEM DETAILS
+        BigDecimal calculatedTotal = BigDecimal.ZERO;
+        for (int i = 0; i < request.getServices().size(); i++) {
+            OrderServiceRequest serviceRequest = request.getServices().get(i);
+            CartItemDetails cartDetails = (cartItemDetails != null && i < cartItemDetails.size()) ? cartItemDetails.get(i) : null;
+            
+            RepairService service = findOrCreateRepairService(serviceRequest.getServiceId());
+            
+            OrderItem orderItem = new OrderItem();
+            orderItem.setOrder(savedOrder);
+            orderItem.setService(service);
+            orderItem.setQuantity(serviceRequest.getQuantity());
+            orderItem.setUnitPrice(serviceRequest.getPrice());
+            orderItem.setTotalPrice(serviceRequest.getPrice().multiply(BigDecimal.valueOf(serviceRequest.getQuantity())));
+            orderItem.setNotes(serviceRequest.getNotes());
+            
+            // *** CRITICAL FIX: Store actual cart item details ***
+            if (cartDetails != null) {
+                orderItem.setServiceName(cartDetails.getServiceName()); // "MacBook"
+                orderItem.setServiceCategory(cartDetails.getCategoryName()); // "Home Visit"
+                logger.info("✅ FIXED: Storing cart item details - Name: {}, Category: {}", 
+                           cartDetails.getServiceName(), cartDetails.getCategoryName());
+            } else {
+                // Fallback to service data if cart details not available
+                orderItem.setServiceName(service.getName());
+                orderItem.setServiceCategory(service.getDeviceType().toString());
+                logger.warn("Using service fallback data for order item");
+            }
+            
+            orderItemRepository.save(orderItem);
+            calculatedTotal = calculatedTotal.add(orderItem.getTotalPrice());
+        }
+        
+        // Set the first service as the main service for compatibility
+        if (!request.getServices().isEmpty()) {
+            RepairService firstService = findOrCreateRepairService(request.getServices().get(0).getServiceId());
+            savedOrder.setService(firstService);
+        }
+        
+        // Update order with final data
+        savedOrder = orderRepository.save(savedOrder);
+        
+        // Create invoice for the order
+        createInvoiceForOrder(savedOrder);
+        
+        logger.info("✅ FIXED: Order created with actual cart item names: {} for user: {} with {} services", 
+                   orderNumber, currentUser.getPhone(), request.getServices().size());
+        return savedOrder;
+    }
+
+    /**
+     * *** ENHANCED: Create new repair order with multiple services and proper category information ***
      */
     public RepairOrder createOrderWithMultipleServices(CreateOrderRequest request) {
+        User currentUser = authService.getCurrentUser();
+        
+        // Validate address
+        Address address = addressRepository.findById(request.getAddressId())
+                .orElseThrow(() -> new ResourceNotFoundException("Address", "id", request.getAddressId()));
+        
+        // Verify address belongs to current user
+        if (!address.getUser().getId().equals(currentUser.getId())) {
+            throw new BadRequestException("Address does not belong to current user");
+        }
+        
+        // Generate unique order number
+        String orderNumber = OrderNumberGenerator.generateOrderNumber();
+        
+        // Create order
+        RepairOrder order = new RepairOrder();
+        order.setOrderNumber(orderNumber);
+        order.setUser(currentUser);
+        order.setTotalPrice(request.getTotalAmount());
+        order.setProblemDescription(request.getProblemDescription());
+        order.setPickupAddress(address.getFullAddress());
+        order.setCustomerNotes(request.getCustomerNotes());
+        order.setStatus(RepairOrder.OrderStatus.PENDING);
+        order.setAddress(address);
+        
+        // Save order first to get ID
+        RepairOrder savedOrder = orderRepository.save(order);
+        
+        // Create order items with PROPER CATEGORY AND SERVICE ITEM DETAILS
+        BigDecimal calculatedTotal = BigDecimal.ZERO;
+        List<OrderItem> createdOrderItems = new ArrayList<>(); // *** TRACK CREATED ITEMS ***
+        
+        for (OrderServiceRequest serviceRequest : request.getServices()) {
+            
+            // *** ENHANCED: Fetch actual service item and category information ***
+            com.digicashon.digicashonbackendservice.entity.ServiceItem serviceItem = null;
+            if (serviceRequest.getServiceId() != null) {
+                serviceItem = serviceItemRepository.findById(serviceRequest.getServiceId())
+                    .orElse(null);
+            }
+            
+            RepairService service = findOrCreateRepairService(serviceRequest.getServiceId());
+            
+            OrderItem orderItem = new OrderItem();
+            orderItem.setOrder(savedOrder);
+            orderItem.setService(service);
+            orderItem.setQuantity(serviceRequest.getQuantity());
+            orderItem.setUnitPrice(serviceRequest.getPrice());
+            orderItem.setTotalPrice(serviceRequest.getPrice().multiply(BigDecimal.valueOf(serviceRequest.getQuantity())));
+            orderItem.setNotes(serviceRequest.getNotes());
+            
+            // *** CRITICAL ENHANCEMENT: Store proper category and service information ***
+            if (serviceItem != null) {
+                // Get category name from service_categories table
+                String categoryName = serviceItem.getServiceCategory().getCategoryName();
+                String serviceTitle = serviceItem.getServiceTitle();
+                
+                orderItem.setServiceItemId(serviceItem.getId());
+                orderItem.setServiceCategory(categoryName); // "Home Visit", "Repair", "Laptop/Desktop", "Add-On"
+                orderItem.setServiceTitle(serviceTitle); // "Windows Laptop", "Desktop", "MacBook"
+                
+                // Use provided service name or fall back to service title
+                orderItem.setServiceName(serviceRequest.getName() != null ? 
+                    serviceRequest.getName() : serviceTitle);
+                
+                logger.info("✅ ENHANCED: Storing service details - Category: '{}', Title: '{}', Name: '{}', ItemId: {}", 
+                           categoryName, serviceTitle, orderItem.getServiceName(), serviceItem.getId());
+                           
+                // *** DEBUG: Log what we're setting ***
+                logger.info("🔍 DEBUG: OrderItem after setting - Category: '{}', Title: '{}', Name: '{}', ItemId: {}",
+                           orderItem.getServiceCategory(), orderItem.getServiceTitle(), 
+                           orderItem.getServiceName(), orderItem.getServiceItemId());
+            } else {
+                // Fallback for backward compatibility
+                orderItem.setServiceName(serviceRequest.getName());
+                orderItem.setServiceCategory(serviceRequest.getCategoryName());
+                orderItem.setServiceTitle(serviceRequest.getServiceTitle());
+                logger.warn("Using provided service data (no service item found): {}", serviceRequest.getServiceId());
+                
+                // *** DEBUG: Log fallback data ***
+                logger.info("🔍 DEBUG: Using fallback data - Category: '{}', Title: '{}', Name: '{}'",
+                           orderItem.getServiceCategory(), orderItem.getServiceTitle(), orderItem.getServiceName());
+            }
+            
+            // *** CRITICAL FIX: Save the order item and add to both database and collection ***
+            OrderItem savedOrderItem = orderItemRepository.save(orderItem);
+            createdOrderItems.add(savedOrderItem);
+            
+            // *** CRITICAL FIX: Add the saved item to the order's collection ***
+            savedOrder.getOrderItems().add(savedOrderItem);
+            
+            calculatedTotal = calculatedTotal.add(savedOrderItem.getTotalPrice());
+            
+            logger.info("✅ OrderItem created and added to collection: {} with category '{}' and title '{}'", 
+                       savedOrderItem.getId(), savedOrderItem.getServiceCategory(), savedOrderItem.getServiceTitle());
+        }
+        
+        // Set the first service as the main service for compatibility
+        if (!request.getServices().isEmpty()) {
+            RepairService firstService = findOrCreateRepairService(request.getServices().get(0).getServiceId());
+            savedOrder.setService(firstService);
+        }
+        
+        // Update order with final data
+        savedOrder = orderRepository.save(savedOrder);
+        
+        // Create invoice for the order
+        createInvoiceForOrder(savedOrder);
+        
+        // *** VERIFY COLLECTION STATE BEFORE RETURNING ***
+        logger.info("✅ FINAL: Order items collection size: {} for order {}", 
+                   savedOrder.getOrderItems().size(), savedOrder.getOrderNumber());
+                   
+        // *** DEBUG: Log each order item's field values in final collection ***
+        for (int i = 0; i < savedOrder.getOrderItems().size(); i++) {
+            OrderItem item = savedOrder.getOrderItems().get(i);
+            logger.info("🔍 FINAL: OrderItem[{}] - Category: '{}', Title: '{}', Name: '{}', ItemId: {}",
+                       i, item.getServiceCategory(), item.getServiceTitle(), 
+                       item.getServiceName(), item.getServiceItemId());
+        }
+        
+        logger.info("✅ ENHANCED: Order created with proper category information: {} for user: {} with {} services", 
+                   orderNumber, currentUser.getPhone(), request.getServices().size());
+        return savedOrder;
+    }
+
+    /**
+     * *** ORIGINAL METHOD - keeping for reference ***
+     */
+    private RepairOrder createOrderWithMultipleServicesOriginal(CreateOrderRequest request) {
         User currentUser = authService.getCurrentUser();
         
         // Validate address
@@ -162,6 +376,67 @@ public class OrderService {
     }
 
     /**
+     * *** ENHANCED: Get user orders with actual cart item details ***
+     * Now uses proper JOIN FETCH queries to avoid lazy loading issues
+     */
+    @Transactional(readOnly = true)
+    public List<RepairOrder> getUserOrdersWithItems(Long userId) {
+        try {
+            logger.info("Fetching orders for user ID: {}", userId);
+            
+            // Use enhanced repository query with JOIN FETCH for orderItems
+            List<RepairOrder> orders = orderRepository.findByUserIdOrderByCreatedAtDesc(userId);
+            
+            logger.info("Found {} orders for user ID: {}", orders.size(), userId);
+            
+            // Log details about order items for debugging
+            for (RepairOrder order : orders) {
+                logger.info("Order {} has {} order items", order.getOrderNumber(), order.getOrderItems().size());
+                
+                // Debug log the new order item fields
+                for (OrderItem item : order.getOrderItems()) {
+                    logger.info("OrderItem - Category: '{}', Title: '{}', Name: '{}', ServiceItemId: {}", 
+                               item.getServiceCategory(), item.getServiceTitle(), 
+                               item.getServiceName(), item.getServiceItemId());
+                }
+            }
+            
+            return orders;
+            
+        } catch (Exception e) {
+            logger.error("Error fetching orders with items for user ID: {}", userId, e);
+            
+            // Fallback: try simple query without JOIN FETCH
+            logger.warn("Attempting fallback query without JOIN FETCH");
+            try {
+                List<RepairOrder> fallbackOrders = orderRepository.findAllById(
+                    orderRepository.findAll().stream()
+                        .filter(o -> o.getUser().getId().equals(userId))
+                        .map(RepairOrder::getId)
+                        .toList()
+                );
+                
+                // Try to initialize order items manually
+                fallbackOrders.forEach(order -> {
+                    try {
+                        order.getOrderItems().size(); // Force lazy loading
+                    } catch (Exception ie) {
+                        logger.warn("Failed to load order items for order {}: {}", order.getOrderNumber(), ie.getMessage());
+                        // Set empty list to avoid serialization issues
+                        order.setOrderItems(new ArrayList<>());
+                    }
+                });
+                
+                return fallbackOrders;
+                
+            } catch (Exception fallbackException) {
+                logger.error("Fallback query also failed for user ID: {}", userId, fallbackException);
+                throw new RuntimeException("Unable to fetch user orders: " + fallbackException.getMessage(), fallbackException);
+            }
+        }
+    }
+
+    /**
      * Get user orders with pagination
      */
     public Page<RepairOrder> getUserOrdersWithPagination(Long userId, Pageable pageable) {
@@ -183,6 +458,61 @@ public class OrderService {
     public RepairOrder getOrderByOrderNumber(String orderNumber) {
         return orderRepository.findByOrderNumber(orderNumber)
                 .orElseThrow(() -> new ResourceNotFoundException("RepairOrder", "orderNumber", orderNumber));
+    }
+    
+    /**
+     * *** ENHANCED: Get order by order number with complete details including orderItems ***
+     * This method returns the same detailed structure as order creation response
+     */
+    @Transactional(readOnly = true)
+    public RepairOrder getOrderDetailsByOrderNumber(String orderNumber) {
+        try {
+            logger.info("Fetching detailed order information for order number: {}", orderNumber);
+            
+            // Use repository method with JOIN FETCH to get complete order data
+            RepairOrder order = orderRepository.findByOrderNumberWithAssociations(orderNumber)
+                    .orElseThrow(() -> new ResourceNotFoundException("RepairOrder", "orderNumber", orderNumber));
+            
+            logger.info("Found order {} with {} order items", order.getOrderNumber(), order.getOrderItems().size());
+            
+            // Debug log the order items for troubleshooting
+            for (OrderItem item : order.getOrderItems()) {
+                logger.info("OrderItem details - ID: {}, Category: '{}', Title: '{}', Name: '{}', ServiceItemId: {}, Price: {}", 
+                           item.getId(), item.getServiceCategory(), item.getServiceTitle(), 
+                           item.getServiceName(), item.getServiceItemId(), item.getUnitPrice());
+            }
+            
+            return order;
+            
+        } catch (ResourceNotFoundException e) {
+            logger.error("Order not found with number: {}", orderNumber);
+            throw e;
+        } catch (Exception e) {
+            logger.error("Error fetching order details for order number: {}", orderNumber, e);
+            
+            // Fallback: try basic query and manually load associations
+            logger.warn("Attempting fallback query for order: {}", orderNumber);
+            try {
+                RepairOrder fallbackOrder = orderRepository.findByOrderNumber(orderNumber)
+                        .orElseThrow(() -> new ResourceNotFoundException("RepairOrder", "orderNumber", orderNumber));
+                
+                // Force loading of associations
+                fallbackOrder.getOrderItems().size(); // Trigger lazy loading
+                if (fallbackOrder.getService() != null) {
+                    fallbackOrder.getService().getName(); // Ensure service is loaded
+                }
+                if (fallbackOrder.getAddress() != null) {
+                    fallbackOrder.getAddress().getFullAddress(); // Ensure address is loaded
+                }
+                
+                logger.info("Fallback successful for order: {}", orderNumber);
+                return fallbackOrder;
+                
+            } catch (Exception fallbackException) {
+                logger.error("Fallback query also failed for order: {}", orderNumber, fallbackException);
+                throw new RuntimeException("Unable to fetch order details: " + fallbackException.getMessage(), fallbackException);
+            }
+        }
     }
 
     /**
@@ -394,5 +724,19 @@ public class OrderService {
         logger.info("Created RepairService with ID: {} for ServiceItem: {}", savedService.getId(), serviceItemId);
         
         return savedService;
+    }
+    
+    // *** NEW: Helper class for cart item details ***
+    public static class CartItemDetails {
+        private String serviceName;
+        private String categoryName;
+        
+        public CartItemDetails(String serviceName, String categoryName) {
+            this.serviceName = serviceName;
+            this.categoryName = categoryName;
+        }
+        
+        public String getServiceName() { return serviceName; }
+        public String getCategoryName() { return categoryName; }
     }
 }

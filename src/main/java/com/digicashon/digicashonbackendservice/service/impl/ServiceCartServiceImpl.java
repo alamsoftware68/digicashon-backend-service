@@ -685,8 +685,16 @@ public class ServiceCartServiceImpl implements ServiceCartService {
             orderRequest.setProblemDescription(problemDescription != null ? problemDescription : "Service request from cart");
             orderRequest.setCustomerNotes(customerNotes);
 
-            // Place order using existing OrderService
-            RepairOrder order = orderService.createOrderWithMultipleServices(orderRequest);
+            // *** CRITICAL FIX: Prepare cart item details for order creation ***
+            List<com.repairapp.service.OrderService.CartItemDetails> cartItemDetails = cartItems.stream().map(item -> 
+                new com.repairapp.service.OrderService.CartItemDetails(
+                    item.getServiceTitle(), // "MacBook" - actual cart item name
+                    item.getCategoryName()  // "Home Visit" - actual cart category
+                )
+            ).collect(Collectors.toList());
+
+            // *** CRITICAL FIX: Use enhanced order creation with cart details ***
+            RepairOrder order = orderService.createOrderWithMultipleServicesFromCart(orderRequest, cartItemDetails);
 
             // Clear cart after successful order placement
             clearCart(sessionId, user);
@@ -703,14 +711,14 @@ public class ServiceCartServiceImpl implements ServiceCartService {
             result.put("address", order.getPickupAddress());
             result.put("orderDate", order.getCreatedAt());
 
-            // Add service details to response
+            // *** FIXED: Add actual cart item details to response ***
             List<Map<String, Object>> serviceDetails = cartItems.stream().map(item -> {
                 Map<String, Object> serviceDetail = new HashMap<>();
-                serviceDetail.put("name", item.getServiceTitle());
+                serviceDetail.put("name", item.getServiceTitle()); // "MacBook" - ACTUAL NAME
+                serviceDetail.put("category", item.getCategoryName()); // "Home Visit" - ACTUAL CATEGORY
                 serviceDetail.put("quantity", item.getQuantity());
                 serviceDetail.put("price", item.getUnitPrice());
                 serviceDetail.put("totalPrice", item.getTotalPrice());
-                serviceDetail.put("category", item.getCategoryName());
                 return serviceDetail;
             }).collect(Collectors.toList());
             result.put("services", serviceDetails);

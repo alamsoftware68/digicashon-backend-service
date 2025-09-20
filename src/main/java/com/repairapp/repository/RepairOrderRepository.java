@@ -110,9 +110,12 @@ public interface RepairOrderRepository extends JpaRepository<RepairOrder, Long> 
     /**
      * Find orders by user ID (avoids detached entity issues)
      * Eagerly fetch required associations to prevent lazy loading issues
+     * *** ENHANCED: Now includes orderItems to support new order item fields ***
      */
     @Query("SELECT DISTINCT o FROM RepairOrder o " +
            "LEFT JOIN FETCH o.service s " +
+           "LEFT JOIN FETCH o.orderItems oi " +
+           "LEFT JOIN FETCH oi.service ois " +
            "LEFT JOIN FETCH o.technician t " +
            "LEFT JOIN FETCH o.address a " +
            "WHERE o.user.id = :userId ORDER BY o.createdAt DESC")
@@ -133,9 +136,12 @@ public interface RepairOrderRepository extends JpaRepository<RepairOrder, Long> 
     
     /**
      * Find order by ID with eager fetching to prevent lazy loading issues
+     * *** ENHANCED: Now includes orderItems to support new order item fields ***
      */
     @Query("SELECT DISTINCT o FROM RepairOrder o " +
            "LEFT JOIN FETCH o.service s " +
+           "LEFT JOIN FETCH o.orderItems oi " +
+           "LEFT JOIN FETCH oi.service ois " +
            "LEFT JOIN FETCH o.technician t " +
            "LEFT JOIN FETCH o.address a " +
            "WHERE o.id = :orderId")
@@ -143,9 +149,12 @@ public interface RepairOrderRepository extends JpaRepository<RepairOrder, Long> 
     
     /**
      * Find order by order number with eager fetching to prevent lazy loading issues
+     * *** ENHANCED: Now includes orderItems to support new order item fields ***
      */
     @Query("SELECT DISTINCT o FROM RepairOrder o " +
            "LEFT JOIN FETCH o.service s " +
+           "LEFT JOIN FETCH o.orderItems oi " +
+           "LEFT JOIN FETCH oi.service ois " +
            "LEFT JOIN FETCH o.technician t " +
            "LEFT JOIN FETCH o.address a " +
            "WHERE o.orderNumber = :orderNumber")

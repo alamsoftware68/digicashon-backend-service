@@ -29,6 +29,13 @@ public class OrderServiceRequest {
     @Size(max = 500, message = "Notes must not exceed 500 characters")
     private String notes;
 
+    // *** NEW FIELDS FOR CATEGORY INFORMATION ***
+    @Size(max = 100, message = "Category name must not exceed 100 characters")
+    private String categoryName; // "Home Visit", "Repair", "Laptop/Desktop", "Add-On"
+
+    @Size(max = 150, message = "Service title must not exceed 150 characters")
+    private String serviceTitle; // "Windows Laptop", "Desktop", "MacBook"
+
     // Constructors
     public OrderServiceRequest() {}
 
@@ -77,5 +84,22 @@ public class OrderServiceRequest {
 
     public void setNotes(String notes) {
         this.notes = notes;
+    }
+
+    // *** NEW GETTERS AND SETTERS FOR CATEGORY INFORMATION ***
+    public String getCategoryName() {
+        return categoryName;
+    }
+
+    public void setCategoryName(String categoryName) {
+        this.categoryName = categoryName;
+    }
+
+    public String getServiceTitle() {
+        return serviceTitle;
+    }
+
+    public void setServiceTitle(String serviceTitle) {
+        this.serviceTitle = serviceTitle;
     }
 }

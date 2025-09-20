@@ -67,8 +67,8 @@ public class RepairOrder extends BaseEntity {
     @JsonIgnoreProperties({"orders", "orderItems", "category", "features"}) // Prevent circular references
     private RepairService service; // Main service for backward compatibility
 
-    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    @JsonIgnore // Ignore order items to prevent lazy loading issues for now
+    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
+    @JsonIgnoreProperties({"order"}) // Prevent circular reference but include order items
     private List<OrderItem> orderItems = new ArrayList<>();
 
     @ManyToOne(fetch = FetchType.LAZY)
