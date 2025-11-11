@@ -120,6 +120,7 @@ public class SecurityConfig {
                 .requestMatchers("/auth/**").permitAll()
                 .requestMatchers("/otp/**").permitAll()
                 .requestMatchers("/services/**").permitAll()
+                .requestMatchers("/service-categories/**").permitAll() // Allow public access to service categories
                 .requestMatchers("/frontend/**").permitAll()
                 .requestMatchers("/test/**").permitAll()
                 .requestMatchers("/swagger-ui/**", "/api-docs/**", "/swagger-ui.html").permitAll()
@@ -127,6 +128,7 @@ public class SecurityConfig {
                 
                 // Service cart endpoints (allow guest + authenticated users)
                 .requestMatchers("/service-cart/**").permitAll()
+                .requestMatchers("/service-carts/**").permitAll() // Allow public access to service carts (plural)
                 
                 // Profile endpoints - REQUIRE AUTHENTICATION
                 .requestMatchers("/profile/**").authenticated()
