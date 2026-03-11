@@ -129,7 +129,15 @@ public class SecurityConfig {
                 // Service cart endpoints (allow guest + authenticated users)
                 .requestMatchers("/service-cart/**").permitAll()
                 .requestMatchers("/service-carts/**").permitAll() // Allow public access to service carts (plural)
-                
+
+                // Device configuration endpoints (allow public access for browsing devices)
+                .requestMatchers("/devices/config/**").permitAll()
+                .requestMatchers("/api/devices/config/**").permitAll()
+
+                // Device evaluation endpoints (allow public access for price calculation)
+                .requestMatchers("/devices/evaluations/**").permitAll()
+                .requestMatchers("/api/devices/evaluations/**").permitAll()
+
                 // Profile endpoints - REQUIRE AUTHENTICATION
                 .requestMatchers("/profile/**").authenticated()
                 
