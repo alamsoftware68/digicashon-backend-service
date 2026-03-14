@@ -2,6 +2,8 @@ package com.repairapp.controller;
 
 import com.repairapp.adminread.entity.*;
 import com.repairapp.adminread.repository.*;
+import com.repairapp.adminread.entity.AdminSuperCategory;
+import com.repairapp.adminread.repository.AdminSuperCategoryRepository;
 import com.repairapp.dto.response.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -50,6 +52,16 @@ public class DeviceConfigurationController {
 
     @Autowired
     private AdminBrandModelRepository brandModelRepository;
+
+    @Autowired
+    private AdminSuperCategoryRepository superCategoryRepository;
+
+    @Operation(summary = "Get all enabled super categories", description = "Fetch all enabled super categories")
+    @GetMapping("/super-categories")
+    public ResponseEntity<ApiResponse<List<AdminSuperCategory>>> getSuperCategories() {
+        List<AdminSuperCategory> superCategories = superCategoryRepository.findByEnabledTrueOrderByIdAsc();
+        return ResponseEntity.ok(ApiResponse.success("Super categories retrieved successfully", superCategories));
+    }
 
     @Operation(summary = "Get all enabled processors", description = "Fetch all enabled processor options")
     @GetMapping("/processors")
