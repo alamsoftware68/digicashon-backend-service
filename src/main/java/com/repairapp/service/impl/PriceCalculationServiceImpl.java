@@ -90,14 +90,14 @@ public class PriceCalculationServiceImpl implements PriceCalculationService {
                 .orElseThrow(() -> new BadRequestException("Brand model not found or disabled"));
 
         BigDecimal basePrice = brandModel.getBasePrice();
-        logger.info("Base price from model: {}", basePrice);
+        logger.info("Base price from model (for reference only): {}", basePrice);
 
         // Step 1: Calculate specification impact
         BigDecimal specImpact = calculateSpecificationImpact(request);
         logger.info("Specification impact: {}", specImpact);
 
-        // Step 2: Calculate price after specs
-        BigDecimal priceAfterSpecs = basePrice.add(specImpact);
+        // Step 2: Use only specification impact (base price is for display only, not included in calculation)
+        BigDecimal priceAfterSpecs = specImpact;
         logger.info("Price after specs: {}", priceAfterSpecs);
 
         // Step 3: Apply condition multiplier
