@@ -5,9 +5,6 @@ import org.hibernate.annotations.Immutable;
 
 import java.math.BigDecimal;
 
-/**
- * Read-only entity for device graphics from Admin database
- */
 @Entity
 @Table(name = "device_graphics")
 @Immutable
@@ -20,12 +17,6 @@ public class AdminDeviceGraphics {
     @Column(name = "graphics_name")
     private String graphicsName;
 
-    @Column(name = "brand")
-    private String brand;
-
-    @Column(name = "vram_gb")
-    private Integer vramGb;
-
     @Column(name = "price_impact", precision = 10, scale = 2)
     private BigDecimal priceImpact;
 
@@ -35,32 +26,9 @@ public class AdminDeviceGraphics {
     @Column(name = "enabled")
     private Boolean enabled;
 
-    // Getters only (read-only)
-    public Long getId() {
-        return id;
-    }
-
-    public String getGraphicsName() {
-        return graphicsName;
-    }
-
-    public String getBrand() {
-        return brand;
-    }
-
-    public Integer getVramGb() {
-        return vramGb;
-    }
-
-    public BigDecimal getPriceImpact() {
-        return priceImpact;
-    }
-
-    public Integer getDisplayOrder() {
-        return displayOrder;
-    }
-
-    public Boolean getEnabled() {
-        return enabled;
-    }
+    public Long getId() { return id; }
+    public String getGraphicsName() { return graphicsName; }
+    public BigDecimal getPriceImpact() { return priceImpact; }
+    public Integer getDisplayOrder() { return displayOrder; }
+    public Boolean getEnabled() { return enabled; }
 }

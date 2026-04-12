@@ -23,12 +23,6 @@ public class AdminDeviceAgeDepreciation {
     @Column(name = "age_label")
     private String ageLabel;
 
-    @Column(name = "min_months")
-    private Integer minMonths;
-
-    @Column(name = "max_months")
-    private Integer maxMonths;
-
     @Column(name = "depreciation_percentage", precision = 5, scale = 2)
     private BigDecimal depreciationPercentage;
 
@@ -49,14 +43,6 @@ public class AdminDeviceAgeDepreciation {
 
     public String getAgeLabel() {
         return ageLabel;
-    }
-
-    public Integer getMinMonths() {
-        return minMonths;
-    }
-
-    public Integer getMaxMonths() {
-        return maxMonths;
     }
 
     public BigDecimal getDepreciationPercentage() {

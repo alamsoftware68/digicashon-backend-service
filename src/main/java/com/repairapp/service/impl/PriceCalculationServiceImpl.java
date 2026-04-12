@@ -90,15 +90,16 @@ public class PriceCalculationServiceImpl implements PriceCalculationService {
                 .orElseThrow(() -> new BadRequestException("Brand model not found or disabled"));
 
         BigDecimal basePrice = brandModel.getBasePrice();
-        logger.info("Base price from model (for reference only): {}", basePrice);
+        logger.info("Base price from model: {}", basePrice);
 
-        // Step 1: Calculate specification impact
+        // Step 1: Calculate specification quality score (average of selected component scores, 0-100)
         BigDecimal specImpact = calculateSpecificationImpact(request);
-        logger.info("Specification impact: {}", specImpact);
+        logger.info("Specification quality score: {}%", specImpact);
 
-        // Step 2: Use only specification impact (base price is for display only, not included in calculation)
-        BigDecimal priceAfterSpecs = specImpact;
-        logger.info("Price after specs: {}", priceAfterSpecs);
+        // Step 2: Apply spec quality score as percentage of base price
+        // specScore 100 = full base price, 80 = 80% of base price, etc.
+        BigDecimal priceAfterSpecs = basePrice.multiply(specImpact.divide(new BigDecimal("100"), 4, RoundingMode.HALF_UP));
+        logger.info("Price after spec score (basePrice x specScore%): {}", priceAfterSpecs);
 
         // Step 3: Apply condition multiplier
         AdminDeviceConditionMultiplier condition = conditionRepository
@@ -159,8 +160,13 @@ public class PriceCalculationServiceImpl implements PriceCalculationService {
             finalPrice = BigDecimal.ZERO;
         }
 
+        // Cap final price at base price — never exceed the "GET PRICE UPTO" amount shown to the user
+        if (finalPrice.compareTo(basePrice) > 0) {
+            finalPrice = basePrice;
+        }
+
         finalPrice = finalPrice.setScale(2, RoundingMode.HALF_UP);
-        logger.info("Final calculated price: {}", finalPrice);
+        logger.info("Final calculated price (capped at basePrice {}): {}", basePrice, finalPrice);
 
         // Create and save device evaluation
         DeviceEvaluation evaluation = new DeviceEvaluation();
@@ -283,50 +289,63 @@ public class PriceCalculationServiceImpl implements PriceCalculationService {
     }
 
     /**
-     * Calculate total specification impact from processor, graphics, RAM, storage, and screen size
+     * Calculate average specification quality score (0-100) from selected components.
+     * Each component's priceImpact represents its quality score (100 = best, lower = lesser spec).
+     * Returns the average across all selected components. If no specs selected, returns 100 (full base price).
      */
     private BigDecimal calculateSpecificationImpact(DeviceEvaluationRequest request) {
-        BigDecimal totalImpact = BigDecimal.ZERO;
+        BigDecimal totalScore = BigDecimal.ZERO;
+        int count = 0;
 
-        // Processor impact
+        // Processor quality score
         if (request.getProcessorId() != null) {
             AdminDeviceProcessor processor = processorRepository.findByIdAndEnabledTrue(request.getProcessorId())
                     .orElseThrow(() -> new BadRequestException("Processor not found or disabled"));
-            totalImpact = totalImpact.add(processor.getPriceImpact());
+            totalScore = totalScore.add(processor.getPriceImpact());
+            count++;
         }
 
-        // Graphics impact (optional)
+        // Graphics quality score (optional)
         if (request.getGraphicsId() != null) {
             AdminDeviceGraphics graphics = graphicsRepository.findByIdAndEnabledTrue(request.getGraphicsId())
                     .orElse(null);
             if (graphics != null) {
-                totalImpact = totalImpact.add(graphics.getPriceImpact());
+                totalScore = totalScore.add(graphics.getPriceImpact());
+                count++;
             }
         }
 
-        // RAM impact
+        // RAM quality score
         if (request.getRamId() != null) {
             AdminDeviceRamOption ram = ramRepository.findByIdAndEnabledTrue(request.getRamId())
                     .orElseThrow(() -> new BadRequestException("RAM option not found or disabled"));
-            totalImpact = totalImpact.add(ram.getPriceImpact());
+            totalScore = totalScore.add(ram.getPriceImpact());
+            count++;
         }
 
-        // Storage impact
+        // Storage quality score
         if (request.getStorageId() != null) {
             AdminDeviceStorageOption storage = storageRepository.findByIdAndEnabledTrue(request.getStorageId())
                     .orElseThrow(() -> new BadRequestException("Storage option not found or disabled"));
-            totalImpact = totalImpact.add(storage.getPriceImpact());
+            totalScore = totalScore.add(storage.getPriceImpact());
+            count++;
         }
 
-        // Screen size impact (optional)
+        // Screen size quality score (optional)
         if (request.getScreenSizeId() != null) {
             AdminDeviceScreenSize screenSize = screenSizeRepository.findByIdAndEnabledTrue(request.getScreenSizeId())
                     .orElse(null);
             if (screenSize != null) {
-                totalImpact = totalImpact.add(screenSize.getPriceImpact());
+                totalScore = totalScore.add(screenSize.getPriceImpact());
+                count++;
             }
         }
 
-        return totalImpact;
+        // If no specs selected, return 100 (use full base price)
+        if (count == 0) {
+            return new BigDecimal("100");
+        }
+
+        return totalScore.divide(new BigDecimal(count), 4, RoundingMode.HALF_UP);
     }
 }

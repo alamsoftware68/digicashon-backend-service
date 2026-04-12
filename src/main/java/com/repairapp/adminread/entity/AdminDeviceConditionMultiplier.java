@@ -26,15 +26,6 @@ public class AdminDeviceConditionMultiplier {
     @Column(name = "multiplier_percentage", precision = 5, scale = 2)
     private BigDecimal multiplierPercentage;
 
-    @Column(name = "requires_invoice")
-    private Boolean requiresInvoice;
-
-    @Column(name = "min_device_age_months")
-    private Integer minDeviceAgeMonths;
-
-    @Column(name = "max_device_age_months")
-    private Integer maxDeviceAgeMonths;
-
     @Column(name = "display_order")
     private Integer displayOrder;
 
@@ -56,18 +47,6 @@ public class AdminDeviceConditionMultiplier {
 
     public BigDecimal getMultiplierPercentage() {
         return multiplierPercentage;
-    }
-
-    public Boolean getRequiresInvoice() {
-        return requiresInvoice;
-    }
-
-    public Integer getMinDeviceAgeMonths() {
-        return minDeviceAgeMonths;
-    }
-
-    public Integer getMaxDeviceAgeMonths() {
-        return maxDeviceAgeMonths;
     }
 
     public Integer getDisplayOrder() {

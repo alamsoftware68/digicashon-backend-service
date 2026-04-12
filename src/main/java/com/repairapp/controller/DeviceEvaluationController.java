@@ -14,6 +14,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -43,6 +44,7 @@ public class DeviceEvaluationController {
     }
 
     @Operation(summary = "Get evaluation by ID", description = "Retrieve a specific device evaluation by ID")
+    @Transactional(readOnly = true)
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<DeviceEvaluationResponse>> getEvaluationById(@PathVariable Long id) {
         DeviceEvaluation evaluation = deviceEvaluationRepository.findById(id)
@@ -52,6 +54,7 @@ public class DeviceEvaluationController {
     }
 
     @Operation(summary = "Get user evaluations", description = "Get all evaluations for a specific user")
+    @Transactional(readOnly = true)
     @GetMapping("/user/{userId}")
     public ResponseEntity<ApiResponse<List<DeviceEvaluationResponse>>> getUserEvaluations(
             @PathVariable Long userId,
@@ -80,6 +83,7 @@ public class DeviceEvaluationController {
     }
 
     @Operation(summary = "Approve evaluation", description = "Approve a device evaluation (user accepts the price)")
+    @Transactional
     @PutMapping("/{id}/approve")
     public ResponseEntity<ApiResponse<DeviceEvaluationResponse>> approveEvaluation(@PathVariable Long id) {
         DeviceEvaluation evaluation = deviceEvaluationRepository.findById(id)
@@ -91,6 +95,7 @@ public class DeviceEvaluationController {
     }
 
     @Operation(summary = "Reject evaluation", description = "Reject a device evaluation (user declines the price)")
+    @Transactional
     @PutMapping("/{id}/reject")
     public ResponseEntity<ApiResponse<DeviceEvaluationResponse>> rejectEvaluation(@PathVariable Long id) {
         DeviceEvaluation evaluation = deviceEvaluationRepository.findById(id)
@@ -109,6 +114,7 @@ public class DeviceEvaluationController {
     }
 
     @Operation(summary = "Get all evaluations", description = "Get all device evaluations (admin use)")
+    @Transactional(readOnly = true)
     @GetMapping
     public ResponseEntity<ApiResponse<List<DeviceEvaluationResponse>>> getAllEvaluations(
             @RequestParam(required = false) String status,
