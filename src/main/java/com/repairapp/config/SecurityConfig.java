@@ -138,6 +138,9 @@ public class SecurityConfig {
                 .requestMatchers("/devices/evaluations/**").permitAll()
                 .requestMatchers("/api/devices/evaluations/**").permitAll()
 
+                // Admin portal read-only endpoints (used by admin backend service)
+                .requestMatchers("/admin-read/**").permitAll()
+
                 // Profile endpoints - REQUIRE AUTHENTICATION
                 .requestMatchers("/profile/**").authenticated()
                 
