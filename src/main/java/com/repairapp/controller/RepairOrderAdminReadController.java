@@ -1,5 +1,6 @@
 package com.repairapp.controller;
 
+import com.repairapp.dto.order.RepairOrderAdminDto;
 import com.repairapp.dto.response.ApiResponse;
 import com.repairapp.entity.RepairOrder;
 import com.repairapp.entity.User;
@@ -9,11 +10,13 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * Read-only endpoint for admin portal to consume repair orders and user info.
@@ -33,9 +36,13 @@ public class RepairOrderAdminReadController {
 
     @Operation(summary = "Get all repair orders", description = "Returns all repair orders for admin portal consumption")
     @GetMapping("/repair-orders")
-    public ResponseEntity<ApiResponse<List<RepairOrder>>> getAllRepairOrders() {
+    @Transactional(readOnly = true)
+    public ResponseEntity<ApiResponse<List<RepairOrderAdminDto>>> getAllRepairOrders() {
         List<RepairOrder> orders = orderService.getRecentOrders();
-        return ResponseEntity.ok(ApiResponse.success("Repair orders retrieved successfully", orders));
+        List<RepairOrderAdminDto> dtos = orders.stream()
+                .map(RepairOrderAdminDto::fromEntity)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(ApiResponse.success("Repair orders retrieved successfully", dtos));
     }
 
     @Operation(summary = "Get basic user info by ID", description = "Returns name, email and phone for a user (admin portal use)")

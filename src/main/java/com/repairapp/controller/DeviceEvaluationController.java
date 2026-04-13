@@ -85,10 +85,29 @@ public class DeviceEvaluationController {
     @Operation(summary = "Approve evaluation", description = "Approve a device evaluation (user accepts the price)")
     @Transactional
     @PutMapping("/{id}/approve")
-    public ResponseEntity<ApiResponse<DeviceEvaluationResponse>> approveEvaluation(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<DeviceEvaluationResponse>> approveEvaluation(
+            @PathVariable Long id,
+            @RequestBody(required = false) java.util.Map<String, String> body) {
         DeviceEvaluation evaluation = deviceEvaluationRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Evaluation not found"));
         evaluation.setStatus(DeviceEvaluation.EvaluationStatus.APPROVED);
+        // Append pickup details to existing notes if provided
+        if (body != null) {
+            StringBuilder sb = new StringBuilder(evaluation.getNotes() != null ? evaluation.getNotes() : "");
+            if (body.containsKey("pickupAddress")) {
+                sb.append("\nPickup address: ").append(body.get("pickupAddress"));
+            }
+            if (body.containsKey("addressType")) {
+                sb.append("\nAddress type: ").append(body.get("addressType"));
+            }
+            if (body.containsKey("pickupDate")) {
+                sb.append("\nPickup date: ").append(body.get("pickupDate"));
+            }
+            if (body.containsKey("pickupTimeSlot")) {
+                sb.append("\nPickup time: ").append(body.get("pickupTimeSlot"));
+            }
+            evaluation.setNotes(sb.toString());
+        }
         DeviceEvaluation updated = deviceEvaluationRepository.save(evaluation);
         DeviceEvaluationResponse response = DeviceEvaluationResponse.fromEntity(updated);
         return ResponseEntity.ok(ApiResponse.success("Evaluation approved successfully", response));
