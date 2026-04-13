@@ -50,6 +50,9 @@ public class OrderService {
     @Autowired
     private com.digicashon.digicashonbackendservice.repository.ServiceItemRepository serviceItemRepository;
 
+    @Autowired
+    private NotificationService notificationService;
+
     /**
      * *** ENHANCED: Create order with cart item details preserved ***
      */
@@ -258,7 +261,15 @@ public class OrderService {
                        item.getServiceName(), item.getServiceItemId());
         }
         
-        logger.info("✅ ENHANCED: Order created with proper category information: {} for user: {} with {} services", 
+        // Send email notifications to customer and admin
+        try {
+            notificationService.sendRepairOrderEmails(savedOrder,
+                    currentUser.getName(), currentUser.getEmail(), currentUser.getPhone());
+        } catch (Exception e) {
+            logger.warn("Failed to send repair order notification emails for order: {}", orderNumber, e);
+        }
+
+        logger.info("✅ ENHANCED: Order created with proper category information: {} for user: {} with {} services",
                    orderNumber, currentUser.getPhone(), request.getServices().size());
         return savedOrder;
     }

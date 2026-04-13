@@ -4,11 +4,14 @@ import com.repairapp.dto.deviceeval.DeviceEvaluationRequest;
 import com.repairapp.dto.deviceeval.DeviceEvaluationResponse;
 import com.repairapp.dto.response.ApiResponse;
 import com.repairapp.entity.DeviceEvaluation;
+import com.repairapp.entity.User;
 import com.repairapp.repository.DeviceEvaluationRepository;
+import com.repairapp.service.NotificationService;
 import com.repairapp.service.PriceCalculationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -27,6 +30,7 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/devices/evaluations")
 @CrossOrigin(origins = "*", maxAge = 3600)
+@Slf4j
 public class DeviceEvaluationController {
 
     @Autowired
@@ -34,6 +38,9 @@ public class DeviceEvaluationController {
 
     @Autowired
     private DeviceEvaluationRepository deviceEvaluationRepository;
+
+    @Autowired
+    private NotificationService notificationService;
 
     @Operation(summary = "Calculate device price", description = "Calculate price for a device based on specifications and condition")
     @PostMapping("/calculate")
@@ -109,6 +116,16 @@ public class DeviceEvaluationController {
             evaluation.setNotes(sb.toString());
         }
         DeviceEvaluation updated = deviceEvaluationRepository.save(evaluation);
+
+        // Send email notifications — extract user data while still in transaction
+        try {
+            User user = updated.getUser();
+            notificationService.sendSellOrderEmails(updated,
+                    user.getName(), user.getEmail(), user.getPhone());
+        } catch (Exception e) {
+            log.warn("Failed to send sell order notification emails for evaluation: {}", id, e);
+        }
+
         DeviceEvaluationResponse response = DeviceEvaluationResponse.fromEntity(updated);
         return ResponseEntity.ok(ApiResponse.success("Evaluation approved successfully", response));
     }

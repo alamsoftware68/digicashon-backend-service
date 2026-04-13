@@ -1,11 +1,16 @@
 package com.repairapp.service;
 
+import com.repairapp.entity.DeviceEvaluation;
 import com.repairapp.entity.OTPVerification;
 import com.repairapp.entity.RepairOrder;
 import com.repairapp.entity.User;
 
 public interface NotificationService {
-    
+
+    // Order Placement Notifications (HTML + PDF)
+    void sendSellOrderEmails(DeviceEvaluation evaluation, String customerName, String customerEmail, String customerPhone);
+    void sendRepairOrderEmails(RepairOrder order, String customerName, String customerEmail, String customerPhone);
+
     // OTP Notifications
     void sendOTPEmail(OTPVerification otp);
     void sendOTPSMS(OTPVerification otp);
