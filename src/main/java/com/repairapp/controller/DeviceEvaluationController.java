@@ -42,6 +42,9 @@ public class DeviceEvaluationController {
     @Autowired
     private NotificationService notificationService;
 
+    @Autowired
+    private com.repairapp.repository.TempLeadRepository tempLeadRepository;
+
     @Operation(summary = "Calculate device price", description = "Calculate price for a device based on specifications and condition")
     @PostMapping("/calculate")
     public ResponseEntity<ApiResponse<DeviceEvaluationResponse>> calculatePrice(
@@ -117,11 +120,25 @@ public class DeviceEvaluationController {
         }
         DeviceEvaluation updated = deviceEvaluationRepository.save(evaluation);
 
+        // Remove temp lead for this user (they placed a real order now)
+        try {
+            if (updated.getUser() != null && updated.getUser().getPhone() != null) {
+                tempLeadRepository.deleteByMobile(updated.getUser().getPhone());
+            }
+            tempLeadRepository.deleteByEvaluationId(updated.getId());
+        } catch (Exception e) {
+            log.warn("Could not delete temp lead for evaluation: {}", id, e);
+        }
+
         // Send email notifications — extract user data while still in transaction
         try {
             User user = updated.getUser();
-            notificationService.sendSellOrderEmails(updated,
-                    user.getName(), user.getEmail(), user.getPhone());
+            if (user == null) {
+                log.warn("Cannot send sell order email for evaluation {}: user is null (evaluation not linked to a user)", id);
+            } else {
+                notificationService.sendSellOrderEmails(updated,
+                        user.getName(), user.getEmail(), user.getPhone());
+            }
         } catch (Exception e) {
             log.warn("Failed to send sell order notification emails for evaluation: {}", id, e);
         }

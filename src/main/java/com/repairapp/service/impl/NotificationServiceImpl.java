@@ -21,6 +21,10 @@ import org.springframework.stereotype.Service;
 
 import java.awt.*;
 import java.io.ByteArrayOutputStream;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -40,6 +44,14 @@ public class NotificationServiceImpl implements NotificationService {
 
     @Value("${app.name:DigiCashOn}")
     private String appName;
+
+    @Value("${app.sms.twofactor.apikey}")
+    private String twoFactorApiKey;
+
+    @Value("${app.sms.twofactor.template:OTP1}")
+    private String twoFactorTemplate;
+
+    private static final HttpClient HTTP_CLIENT = HttpClient.newHttpClient();
 
     // ─────────────────────────────────────────────────────────────
     // NEW: Order Placement Notifications
@@ -735,7 +747,57 @@ public class NotificationServiceImpl implements NotificationService {
 
     @Override
     public void sendSMS(String phoneNumber, String message) {
-        log.info("SMS would be sent to {}: {}", maskPhone(phoneNumber), message);
+        // message is the OTP code when called from sendOTPSMS
+        sendTwoFactorOtp(phoneNumber, message);
+    }
+
+    private void sendTwoFactorOtp(String phoneNumber, String otpOrMessage) {
+        try {
+            // 2Factor needs 10-digit number — strip country code prefix if present
+            String mobile = normalizePhone(phoneNumber);
+
+            // Extract OTP — if message contains a 6-digit number, use it; else use as-is
+            String otp = otpOrMessage.replaceAll(".*?(\\d{6}).*", "$1");
+            if (!otp.matches("\\d{6}")) {
+                otp = otpOrMessage; // fallback: pass raw message
+            }
+
+            // API: GET https://2factor.in/API/V1/{apikey}/SMS/{mobile}/{otp}/{template}
+            String url = String.format("https://2factor.in/API/V1/%s/SMS/%s/%s/%s",
+                    twoFactorApiKey, mobile, otp, twoFactorTemplate);
+
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(url))
+                    .GET()
+                    .build();
+
+            HttpResponse<String> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+
+            if (response.statusCode() == 200 && response.body().contains("\"Status\":\"Success\"")) {
+                log.info("2Factor OTP SMS sent successfully to: {}", maskPhone(phoneNumber));
+            } else {
+                log.error("2Factor OTP SMS failed for: {} — status: {}, body: {}",
+                        maskPhone(phoneNumber), response.statusCode(), response.body());
+            }
+        } catch (Exception e) {
+            log.error("Failed to send 2Factor OTP SMS to: {}", maskPhone(phoneNumber), e);
+        }
+    }
+
+    /**
+     * Normalizes phone to 10-digit Indian mobile number for 2Factor API.
+     * Strips +91, 91 prefix if present.
+     */
+    private String normalizePhone(String phone) {
+        if (phone == null) return phone;
+        String digits = phone.replaceAll("[^0-9]", "");
+        if (digits.length() == 12 && digits.startsWith("91")) {
+            return digits.substring(2); // 919876543210 → 9876543210
+        }
+        if (digits.length() == 13 && digits.startsWith("091")) {
+            return digits.substring(3);
+        }
+        return digits; // already 10-digit
     }
 
     @Override

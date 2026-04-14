@@ -138,6 +138,12 @@ public class SecurityConfig {
                 .requestMatchers("/devices/evaluations/**").permitAll()
                 .requestMatchers("/api/devices/evaluations/**").permitAll()
 
+                // Temp lead endpoints (guest users save price checks; admin backend reads all)
+                .requestMatchers("/devices/temp-leads").permitAll()
+                .requestMatchers("/devices/temp-leads/**").permitAll()
+                .requestMatchers("/api/devices/temp-leads").permitAll()
+                .requestMatchers("/api/devices/temp-leads/**").permitAll()
+
                 // Admin portal read-only endpoints (used by admin backend service)
                 .requestMatchers("/admin-read/**").permitAll()
 

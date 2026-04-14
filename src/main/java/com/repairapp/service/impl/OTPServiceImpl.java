@@ -297,14 +297,6 @@ public class OTPServiceImpl implements OTPService {
     
     @Override
     public String generateOTPCode() {
-        // For development/demo purposes, use hardcoded OTP
-        String demoOtp = System.getProperty("demo.otp", "666666");
-        if ("666666".equals(demoOtp)) {
-            log.info("Using demo OTP: 666666");
-            return "666666";
-        }
-        
-        // Generate 6-digit OTP for production
         int otp = SECURE_RANDOM.nextInt(900000) + 100000;
         return String.valueOf(otp);
     }
